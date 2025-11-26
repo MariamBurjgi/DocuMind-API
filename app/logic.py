@@ -5,7 +5,6 @@ from docx import Document
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# გარემოს ცვლადების ჩატვირთვა
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -24,24 +23,42 @@ def extract_text_from_pdf(file_path: str):
         return None
 
 def extract_text_from_docx(file_path: str):
+    """ კითხულობს ტექსტს პარაგრაფებიდან და ცხრილებიდან """
     try:
         doc = Document(file_path)
-        text = "\n".join([para.text for para in doc.paragraphs])
-        return text
+        full_text = []
+        
+        # 1. ტექსტი პარაგრაფებიდან
+        for para in doc.paragraphs:
+            full_text.append(para.text)
+            
+        # 2. ტექსტი ცხრილებიდან (CV-ებისთვის აუცილებელია!)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    full_text.append(cell.text)
+                    
+        return "\n".join(full_text)
     except Exception as e:
         print(f"Error reading DOCX: {e}")
         return None
 
 def extract_text_from_file(file_path: str):
-    """ ამოწმებს ფაილის ტიპს და ირჩევს შესაბამის ფუნქციას """
-    if file_path.endswith(".pdf"):
+    # ვაქცევთ პატარა ასოებად (.DOCX -> .docx), რომ არ აირიოს
+    path_lower = file_path.lower()
+    
+    if path_lower.endswith(".pdf"):
         return extract_text_from_pdf(file_path)
-    elif file_path.endswith(".docx"):
+    elif path_lower.endswith(".docx"):
         return extract_text_from_docx(file_path)
     else:
         return None
 
 def analyze_cv(cv_text: str, job_description: str):
+    # თუ ტექსტი ძალიან მოკლეა, ესე იგი ვერ წაიკითხა
+    if len(cv_text.strip()) < 10:
+        return '{"error": "ფაილი წაიკითხა, მაგრამ ტექსტი ძალიან ცოტაა. სცადეთ სხვა ფაილი."}'
+
     prompt = f"""
     You are an expert HR AI Assistant. 
     Compare the following Candidate CV with the Job Description.
@@ -61,7 +78,7 @@ def analyze_cv(cv_text: str, job_description: str):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o", # ან gpt-3.5-turbo
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a helpful HR assistant that outputs JSON."},
                 {"role": "user", "content": prompt}
