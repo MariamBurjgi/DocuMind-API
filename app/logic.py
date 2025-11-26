@@ -61,7 +61,7 @@ def analyze_cv(cv_text: str, job_description: str):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o", # ან gpt-3.5-turbo
             messages=[
                 {"role": "system", "content": "You are a helpful HR assistant that outputs JSON."},
                 {"role": "user", "content": prompt}
@@ -70,4 +70,4 @@ def analyze_cv(cv_text: str, job_description: str):
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Error connecting to AI: {e}" 
+        return f"Error connecting to AI: {e}"
